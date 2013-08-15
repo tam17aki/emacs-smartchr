@@ -1,6 +1,7 @@
 ;;; smartchr.el --  emacs version of smartchr.vim
 
-;; Copyright (c) 2009 by IMAKADO.
+;; Copyright (c) 2009 IMAKADO.
+;; Copyright (c) 2013 Akira Tamamori
 
 ;; Author: IMAKADO <ken.imakado@gmail.com>
 ;; blog: http://d.hatena.ne.jp/IMAKADO (japanese)
@@ -21,9 +22,6 @@
 ;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 ;; Boston, MA 02110-1301, USA.
 
-
-;;; Thanks to k1LoW for original idea.
-
 ;;; Commentary:
 
 ;; (global-set-key (kbd "=") (smartchr '(" = " " == " " === ")))
@@ -32,12 +30,7 @@
 ;; (global-set-key (kbd "{")
 ;;              (smartchr '("{ `!!' }" "{ \"`!!'\" }" "{")))
 
-
-;;; TODO:
-;; Error with head version of auto-complete.el
-;; reported by k1LoW
-
-(require 'cl)
+(eval-when-compile (require 'cl))
 
 (defgroup smartchr nil
   "smartchr group"
@@ -91,79 +84,23 @@
          :cleanup-fn (lambda ())
          :insert-fn (lambda ()))))))
    ((string-match smartchr-template-cursor-re template)
-    (destructuring-bind (pre post) (split-string template smartchr-template-cursor-re)
+    (destructuring-bind (pre post)
+        (split-string template smartchr-template-cursor-re)
       (lexical-let ((pre pre) (post post))
         (smartchr-make-struct
          :cleanup-fn (lambda ()
-                       (delete-backward-char (length pre))
-                       (delete-backward-char (- (length post))))
+                       (delete-char (- (length pre)))
+                       (delete-char (length post)))
          :insert-fn (lambda ()
                       (insert pre)
                       (save-excursion (insert post)))))))
    (t
     (lexical-let ((template template))
     (smartchr-make-struct
-     :cleanup-fn (lambda () (delete-backward-char (length template)))
+     :cleanup-fn (lambda ()
+                   (delete-char (- (length template))))
      :insert-fn (lambda () (insert template)))))))
 
-
-;;;; Tests!!
-(dont-compile
-  (when (fboundp 'expectations)
-    (expectations
-      (desc "smartchr-parse smartchr-template-cursor-re")
-      (expect "{  }"
-        (with-temp-buffer
-          (let ((smartchr-struct-cursor-re  "`!!'"))
-            (let ((struct (smartchr-parse "{ `!!' }")))
-              (assert (smartchr-struct-p struct))
-              (funcall (smartchr-struct-insert-fn struct))
-              (buffer-string)))))
-
-      (expect ""
-        (with-temp-buffer
-          (let ((smartchr-struct-cursor-re  "`!!'"))
-            (let ((struct (smartchr-parse "{ `!!' }")))
-              (assert (smartchr-struct-p struct))
-              (funcall (smartchr-struct-insert-fn struct))
-              (funcall (smartchr-struct-cleanup-fn struct))
-              (buffer-string)))))
-
-      (desc "template allow function")
-      (expect t
-        (with-temp-buffer
-          (let ((smartchr-struct-cursor-re  "`!!'")
-                (fn-called nil))
-            (let ((struct (smartchr-parse (lambda () (setq fn-called t)))))
-              (assert (smartchr-struct-p struct))
-              (funcall (smartchr-struct-insert-fn struct))
-              fn-called))))
-
-      (expect "hi"
-        (with-temp-buffer
-          (let ((smartchr-struct-cursor-re  "`!!'"))
-            (let ((struct (smartchr-parse (lambda () "hi"))))
-              (assert (smartchr-struct-p struct))
-              (funcall (smartchr-struct-insert-fn struct))
-              (buffer-string)))))
-
-      (desc "smartchr-parse pass argument if argument is already struct")
-      (expect t
-        (smartchr-struct-p
-         (smartchr-parse
-          (smartchr-make-struct
-           :cleanup-fn (lambda ())
-           :insert-fn (lambda ())))))
-
-      (desc "smartchr-parse rest args")
-      (with-temp-buffer
-          (let ((smartchr-struct-cursor-re  "`!!'"))
-            (let ((cmd (smartchr "a" "b"))
-                  (do-nothing (lambda () (interactive))))
-              (call-interactively cmd)
-              (buffer-string))))
-      )))
-
-
 (provide 'smartchr)
-;; smartchr.el ends here.
+
+;; smartchr.el ends here
